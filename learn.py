@@ -1,3 +1,4 @@
+#Importing Useful Library for this task
 import investpy
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,20 +7,25 @@ from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import LSTM
-from tensorflow import keras
 
+#Collection dataframe object of Microsoft stock from investpy
 df = investpy.get_stock_historical_data(stock='MSFT',
                                         country='United States',
                                         from_date='01/01/2010',
                                         to_date='31/12/2020')
 df.reset_index(inplace=True)
 df2 = df[['Date', 'Close']]
+
+#Visualization of Date Vs close price of Stock
 plt.plot(df2['Date'], df2['Close'])
 plt.title('Microsoft Stock Closing Price ')
 plt.xlabel('Date in (year)')
 plt.ylabel('Close Price')
 plt.grid(color='green', linestyle='--', linewidth=0.5)
+#Saving image
 plt.savefig('Actual_Cost_Price.png', dpi=300)
+
+#Normalization of Data b/w(0 and 1)
 scaler = MinMaxScaler(feature_range=(0, 1))
 df3 = scaler.fit_transform(np.array(df2['Close']).reshape(-1, 1))
 training_size = int(df2[(df2['Date'] <= '2019-12-31')].shape[0])
@@ -28,7 +34,9 @@ train_data, test_data = df3[0:training_size, :], df3[training_size - 101:len(df2
 print(train_data.shape)
 print(test_data.shape)
 
-
+'''Creating Dataset
+Adding 100 feature of previous day stock price ,almost 100 days later which in result our model predict 101 day stock price
+'''
 def create_dataset(dataset, timestep=1):
     dataX = []
     dataY = []
@@ -45,6 +53,8 @@ X_test, y_test = create_dataset(test_data, 100)
 X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
 X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
 
+
+#LSTM model For training Data
 model = Sequential()
 model.add(LSTM(50, return_sequences=True, input_shape=(100, 1)))
 model.add(LSTM(50, return_sequences=True))
@@ -56,11 +66,13 @@ model.compile(
     metrics=["accuracy"],
 )
 print(model.summary())
-
+#Applying Model to our test data after fiting on train data
 model.fit(X_train, y_train, batch_size=64, epochs=50, verbose=2)
 model.evaluate(X_test, y_test, batch_size=64, verbose=2)
 print(X_test.shape)
 test_predict = model.predict(X_test)
+
+#Inverse transform sot get unnormalized dat done by minmaxscaler
 test_predict = scaler.inverse_transform(test_predict)
 test_predict = test_predict.flatten()
 cols = ['Predicted_Cost']
@@ -69,7 +81,9 @@ df5.reset_index(inplace=True)
 df4 = df2[(df2['Date'] > '2019-12-31')]
 df4.reset_index()
 print(df4)
+#Clearing previous plot object
 plt.clf()
+#Creating new plot image i.e comparison between Actual and predicted cost price trained by my model
 plt.plot(df4['Date'], df4['Close'], c='r', label="Actual Close Price")
 plt.plot(df4['Date'], df5['Predicted_Cost'], '--b', label="After Training Close Price")
 plt.legend()
